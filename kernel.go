@@ -8,12 +8,30 @@ import "fmt"
 
 // The state kept by the CPU in order to implement kernel support.
 type kernelCpuState struct {
-	// TODO: Fill this in.
+	// mode flag: for current mode
+	// false for user, true for kernel
+	Mode bool
+	// memory address where CPU jumps for trap
+	TrapHandlerAddr uint32
+	// timer to keep track of instructions and manage time slices
+	Timer uint32
+	// how many times the timers has fired
+	TimerFired uint32
+	// instructions per time slice
+	// dont know if need to implement this?
+	InstructsTimeSlice uint32
 }
 
 // The initial kernel state when the CPU boots.
 var initKernelCpuState = kernelCpuState{
-	// TODO: Fill this in.
+	// start in user mode
+	Mode: false,
+	// TODO: address to be filled in with current address
+	TrapHandlerAddr: 0x1000,
+	Timer:           0,
+	TimerFired:      0,
+	// standard slice length
+	InstructsTimeSlice: 128,
 }
 
 // A hook which is executed at the beginning of each instruction step.
@@ -27,7 +45,19 @@ var initKernelCpuState = kernelCpuState{
 // If `preExecuteHook` returns `true`, the instruction is "skipped": `cpu.step`
 // will immediately return without any further execution.
 func (k *kernelCpuState) preExecuteHook(c *cpu) (bool, error) {
-	// TODO: Fill this in.
+	// check timer
+	k.Timer++
+	if k.Timer >= k.InstructsTimeSlice {
+		k.Timer = 0
+		k.TimerFired++
+		fmt.Println("\nTimer fired!")
+		// init trap handler here?
+	}
+
+	// example mode check and rejecting execution
+	// if !k.Mode && c.CurrentInstruction.IsPriviledge() {
+	// 	return false, fmt.Errorf("illegal instruction in user mode")
+	// }
 	return false, nil
 }
 
