@@ -28,12 +28,11 @@ var initKernelCpuState = kernelCpuState{
 	// start in kernel mode
 	Mode: true,
 	// TODO: address to be filled in with current address
-	// TrapHandlerAddr: 0x1000,
-	TrapHandlerAddr: 0xFF,
+	TrapHandlerAddr: 0x1000,
 	Timer:           0,
 	// // print once finished with hex encoding the number
 	// TimerFired: 0,
-	// // standard slice length
+	// standard slice length
 	// InstructsTimeSlice: 128,
 }
 
@@ -48,18 +47,20 @@ var initKernelCpuState = kernelCpuState{
 // If `preExecuteHook` returns `true`, the instruction is "skipped": `cpu.step`
 // will immediately return without any further execution.
 func (k *kernelCpuState) preExecuteHook(c *cpu) (bool, error) {
+	//initKernelCpuState.TrapHandlerAddr addr := byte(c.registers[7] & 0xFF)
+
 	// checks for mem out of bounds
-	// timer fired
+	// timer fired --> instruction hook instead?
 	// mode
 	// prevent priviledges
-	// validation
+	// validation --> both?
 	// BASE OF SECURITY - LOTS OF CHECKS
 
 	// check timer
 	// k.Timer++
 	// if k.Timer >= k.InstructsTimeSlice {
 	// 	k.Timer = 0
-	// 	k.TimerFired++
+	// 	k.Timer--
 	// 	fmt.Println("\nTimer fired!")
 	// 	// init trap handler here?
 	// }
@@ -132,6 +133,7 @@ func init() {
 						return fmt.Errorf("failed to read from input device: %v", err)
 					}
 					c.registers[6] = word(buf[0])
+					return nil
 
 				case 1: // Write
 					b := byte(c.registers[6] & 0xFF)
@@ -139,6 +141,7 @@ func init() {
 					if err != nil {
 						return fmt.Errorf("failed to write to output device: %v", err)
 					}
+					return nil
 
 				case 2: // Exit
 					fmt.Println("Program has exited")
@@ -149,7 +152,6 @@ func init() {
 					return fmt.Errorf("unknown syscall number: %d", args[0])
 				}
 
-				return nil
 			},
 			validate: nil,
 		}
