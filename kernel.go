@@ -13,25 +13,28 @@ type kernelCpuState struct {
 	Mode bool
 	// memory address where CPU jumps for trap
 	TrapHandlerAddr uint32
-	// timer to keep track of instructions and manage time slices
+	// // timer to keep track of instructions and manage time slices
 	Timer uint32
-	// how many times the timers has fired
-	TimerFired uint32
-	// instructions per time slice
-	// dont know if need to implement this?
-	InstructsTimeSlice uint32
+	// // how many times the timers has fired
+	// // dont know if need to implement this?
+	// TimerFired uint32
+	// // instructions per time slice
+	// // dont know if need to implement this?
+	// InstructsTimeSlice uint32
 }
 
 // The initial kernel state when the CPU boots.
 var initKernelCpuState = kernelCpuState{
-	// start in user mode
-	Mode: false,
+	// start in kernel mode
+	Mode: true,
 	// TODO: address to be filled in with current address
-	TrapHandlerAddr: 0x1000,
+	// TrapHandlerAddr: 0x1000,
+	TrapHandlerAddr: 0xFF,
 	Timer:           0,
-	TimerFired:      0,
-	// standard slice length
-	InstructsTimeSlice: 128,
+	// // print once finished with hex encoding the number
+	// TimerFired: 0,
+	// // standard slice length
+	// InstructsTimeSlice: 128,
 }
 
 // A hook which is executed at the beginning of each instruction step.
@@ -45,14 +48,21 @@ var initKernelCpuState = kernelCpuState{
 // If `preExecuteHook` returns `true`, the instruction is "skipped": `cpu.step`
 // will immediately return without any further execution.
 func (k *kernelCpuState) preExecuteHook(c *cpu) (bool, error) {
+	// checks for mem out of bounds
+	// timer fired
+	// mode
+	// prevent priviledges
+	// validation
+	// BASE OF SECURITY - LOTS OF CHECKS
+
 	// check timer
-	k.Timer++
-	if k.Timer >= k.InstructsTimeSlice {
-		k.Timer = 0
-		k.TimerFired++
-		fmt.Println("\nTimer fired!")
-		// init trap handler here?
-	}
+	// k.Timer++
+	// if k.Timer >= k.InstructsTimeSlice {
+	// 	k.Timer = 0
+	// 	k.TimerFired++
+	// 	fmt.Println("\nTimer fired!")
+	// 	// init trap handler here?
+	// }
 
 	// example mode check and rejecting execution
 	// if !k.Mode && c.CurrentInstruction.IsPriviledge() {
@@ -106,8 +116,40 @@ func init() {
 		instrSyscall = &instr{
 			name: "syscall",
 			cb: func(c *cpu, args [3]byte) error {
-				// TODO: Fill this in.
-				return fmt.Errorf("unimplemented")
+				fmt.Println("entered syscall\n", args[0])
+
+				// Check CPU state to ensure it's in user mode
+				if c.kernel.Mode == false {
+					return fmt.Errorf("syscall invoked in kernel mode")
+				}
+
+				// switch case for syscall number provided in args[0]
+				switch args[0] {
+				case 0: // Read
+					var buf [1]byte
+					_, err := c.read.Read(buf[:])
+					if err != nil {
+						return fmt.Errorf("failed to read from input device: %v", err)
+					}
+					c.registers[6] = word(buf[0])
+
+				case 1: // Write
+					b := byte(c.registers[6] & 0xFF)
+					_, err := c.write.Write([]byte{b})
+					if err != nil {
+						return fmt.Errorf("failed to write to output device: %v", err)
+					}
+
+				case 2: // Exit
+					fmt.Println("Program has exited")
+					c.halted = true
+					return nil
+
+				default:
+					return fmt.Errorf("unknown syscall number: %d", args[0])
+				}
+
+				return nil
 			},
 			validate: nil,
 		}
