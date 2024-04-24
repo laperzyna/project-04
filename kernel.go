@@ -30,7 +30,8 @@ var initKernelCpuState = kernelCpuState{
 	// TODO: address to be filled in with current address
 	TrapHandlerAddr: 0x1000,
 	Timer:           0,
-	// // print once finished with hex encoding the number
+	// print once finished with hex encoding the number
+	// the last line of output to the output device must be Timer fired XXXXXXXX times\n, where XXXXXXXX is the hex encoding of the number of times that the timer has fired during the program execution. (from spec)
 	// TimerFired: 0,
 	// standard slice length
 	// InstructsTimeSlice: 128,
@@ -117,15 +118,15 @@ func init() {
 		instrSyscall = &instr{
 			name: "syscall",
 			cb: func(c *cpu, args [3]byte) error {
-				fmt.Println("entered syscall\n", args[0])
+				fmt.Println("entered syscall\n", int(args[0]&0x7F))
 
-				// Check CPU state to ensure it's in user mode
-				if c.kernel.Mode == false {
-					return fmt.Errorf("syscall invoked in kernel mode")
-				}
+				// // Check CPU state to ensure it's in user mode
+				// if c.kernel.Mode == false {
+				// 	return fmt.Errorf("syscall invoked in kernel mode")
+				// }
 
 				// switch case for syscall number provided in args[0]
-				switch args[0] {
+				switch int(args[0] & 0x7F) {
 				case 0: // Read
 					var buf [1]byte
 					_, err := c.read.Read(buf[:])
