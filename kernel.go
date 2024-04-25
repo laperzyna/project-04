@@ -8,12 +8,33 @@ import "fmt"
 
 // The state kept by the CPU in order to implement kernel support.
 type kernelCpuState struct {
-	// TODO: Fill this in.
+	// mode flag: for current mode
+	// false for user, true for kernel
+	Mode bool
+	// memory address where CPU jumps for trap
+	TrapHandlerAddr word
+	// // timer to keep track of instructions and manage time slices
+	Timer uint32
+	// how many times the timers has fired
+	// dont know if need to implement this?
+	TimerFired uint32
+	// instructions per time slice
+	// dont know if need to implement this?
+	InstructsTimeSlice uint32
 }
 
 // The initial kernel state when the CPU boots.
 var initKernelCpuState = kernelCpuState{
-	// TODO: Fill this in.
+	// start in kernel mode
+	Mode: true,
+	// TODO: address to be filled in with current address
+	TrapHandlerAddr: word(0),
+	Timer:           0,
+	// print once finished with hex encoding the number
+	// the last line of output to the output device must be Timer fired XXXXXXXX times\n, where XXXXXXXX is the hex encoding of the number of times that the timer has fired during the program execution. (from spec)
+	TimerFired: 0,
+	// standard slice length
+	InstructsTimeSlice: 128,
 }
 
 // A hook which is executed at the beginning of each instruction step.
@@ -27,7 +48,27 @@ var initKernelCpuState = kernelCpuState{
 // If `preExecuteHook` returns `true`, the instruction is "skipped": `cpu.step`
 // will immediately return without any further execution.
 func (k *kernelCpuState) preExecuteHook(c *cpu) (bool, error) {
-	// TODO: Fill this in.
+
+	// checks for mem out of bounds
+	// timer fired --> instruction hook instead?
+	// mode
+	// prevent priviledges
+	// validation --> both?
+	// BASE OF SECURITY - LOTS OF CHECKS
+
+	// check timer
+	// k.Timer++
+	// if k.Timer >= k.InstructsTimeSlice {
+	// 	k.Timer = 0
+	// 	k.Timer--
+	// 	fmt.Println("\nTimer fired!")
+	// 	// init trap handler here?
+	// }
+
+	// example mode check and rejecting execution
+	// if !k.Mode && c.CurrentInstruction.IsPriviledge() {
+	// 	return false, fmt.Errorf("illegal instruction in user mode")
+	// }
 	return false, nil
 }
 
@@ -76,15 +117,64 @@ func init() {
 		instrSyscall = &instr{
 			name: "syscall",
 			cb: func(c *cpu, args [3]byte) error {
-				// TODO: Fill this in.
-				return fmt.Errorf("unimplemented")
+				fmt.Println("entered syscall\n", int(args[0]&0x7F))
+
+				// switch case for syscall number provided in args[0]
+				switch int(args[0] & 0x7F) {
+				case 0: // Read
+					var buf [1]byte
+					_, err := c.read.Read(buf[:])
+					if err != nil {
+						return fmt.Errorf("failed to read from input device: %v", err)
+					}
+					c.registers[6] = word(buf[0])
+					return nil
+
+				case 1: // Write
+					b := byte(c.registers[6] & 0xFF)
+					_, err := c.write.Write([]byte{b})
+					if err != nil {
+						return fmt.Errorf("failed to write to output device: %v", err)
+					}
+					return nil
+
+				case 2: // Exit
+					fmt.Println("Program has exited")
+					c.halted = true
+					return nil
+
+				default:
+					return fmt.Errorf("unknown syscall number: %d", args[0])
+				}
+
 			},
 			validate: nil,
 		}
 
-		// TODO: Add other instructions that can be used to implement a kernel.
+		// TODO: Make an instruction to get and set the trap handler state
+		// instrTrapState = &instr{
+		// 	name: "trap_state",
+		// 	cb: func(c *cpu, args [3]byte) error {
+		// 		syscall := int(args[0] & 0x7F)
+		// 		switch syscall {
+		// 		case 3: // Get trap
+		// 			c.registers[7] = word(c.trapHandler.getState())
+		// 			return nil
+
+		// 		case 4: // Set trap
+		// 			c.trapHandler.setState(c.registers[7])
+		// 			return nil
+
+		// 		default:
+		// 			return fmt.Errorf("unknown trap handler syscall number: %d", syscall)
+		// 		}
+		// 	},
+		// 	validate: nil, // Assuming no special validation needed for trap state instructions
+		// }
 	)
 
 	// Add kernel instructions to the instruction set.
+	// TODO: add any other instructions
 	instructionSet.add(instrSyscall)
+	//instructionSet.add(instrTrapState)
 }
