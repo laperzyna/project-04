@@ -6,6 +6,18 @@ import "fmt"
 //
 // All of your CPU emulator changes for Assignment 2 will go in this file.
 
+// need to store somewhere in kernel all registers from when the user was exectuting
+// when you jump and a trap hanppens the instruction pointer r7 points to the address
+// need support from the CPU to tell ther kernel what the instruction point used to be
+// store the instruction pointer inside kernel support in CPU, kernel needs a way to ask for it
+// make instruction called loadUserIptr --> query for instruction pointer
+// OR
+// tell CPU about your memory structure
+// var that points to address memory
+// teach CPU that every time you do a trap automatically save r7 at this location on my behalf
+// save a flag for trapReason and communicate that reason to the kernel
+// adding instruction to query that param?
+
 // The state kept by the CPU in order to implement kernel support.
 type kernelCpuState struct {
 	// mode flag: for current mode
@@ -49,12 +61,9 @@ var initKernelCpuState = kernelCpuState{
 // will immediately return without any further execution.
 func (k *kernelCpuState) preExecuteHook(c *cpu) (bool, error) {
 
-	// checks for mem out of bounds
-	// timer fired --> instruction hook instead?
-	// mode
-	// prevent priviledges
-	// validation --> both?
-	// BASE OF SECURITY - LOTS OF CHECKS
+	// MODE CHECK
+	// DONT UPDATE TIMER FOR SYSCALL
+	// INCREMENT TIMER
 
 	// check timer
 	// k.Timer++
@@ -98,8 +107,12 @@ func init() {
 		})
 	}
 
-	// TODO: Add hooks to other existing instructions to implement kernel
-	// support.
+	// TODO: INSTRUCTION HOOKS
+
+	// MEMORY OUT OF BOUNDS
+	// REGISTER OUT OF BOUNDS 0 - 7 : handled in instr.go genValidate
+	// 3 PRIVELLEDGED INSTRUCTIONS WRITE READ HALT
+	// LOAD AND STORE MEMORY?
 
 	var (
 		// syscall <code>
@@ -114,6 +127,7 @@ func init() {
 		//
 		// You may add new syscall codes if you want, but you may not modify
 		// these existing codes, as `prime.asm` assumes that they are supported.
+		// syscall can cause the trap to happen
 		instrSyscall = &instr{
 			name: "syscall",
 			cb: func(c *cpu, args [3]byte) error {
@@ -152,6 +166,10 @@ func init() {
 		}
 
 		// TODO: Make an instruction to get and set the trap handler state
+		//
+		// trap handler needs to figure out why it was triggered
+		// CPU needs to communicate the reason for why it was trapped
+
 		// instrTrapState = &instr{
 		// 	name: "trap_state",
 		// 	cb: func(c *cpu, args [3]byte) error {
@@ -171,6 +189,7 @@ func init() {
 		// 	},
 		// 	validate: nil, // Assuming no special validation needed for trap state instructions
 		// }
+
 	)
 
 	// Add kernel instructions to the instruction set.
