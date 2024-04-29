@@ -130,6 +130,38 @@ func init() {
 		return false, nil
 	})
 
+	instrRead.addHook(func(c *cpu, args [3]uint8) (bool, error) {
+		if !c.kernel.Mode {
+			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
+		}
+
+		return false, nil
+	})
+
+	instrWrite.addHook(func(c *cpu, args [3]uint8) (bool, error) {
+		if !c.kernel.Mode {
+			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
+		}
+
+		return false, nil
+	})
+
+	instrHalt.addHook(func(c *cpu, args [3]uint8) (bool, error) {
+		if !c.kernel.Mode {
+			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
+		}
+
+		return false, nil
+	})
+
+	instrUnreachable.addHook(func(c *cpu, args [3]uint8) (bool, error) {
+		if !c.kernel.Mode {
+			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
+		}
+
+		return false, nil
+	})
+
 	var (
 		// syscall <code>
 		//
