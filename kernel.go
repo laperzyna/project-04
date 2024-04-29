@@ -130,6 +130,7 @@ func init() {
 		return false, nil
 	})
 
+	// Prevent user mode from executing priveledged instruction
 	instrRead.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
 			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
@@ -138,6 +139,7 @@ func init() {
 		return false, nil
 	})
 
+	// Prevent user mode from executing priveledged instruction
 	instrWrite.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
 			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
@@ -146,6 +148,7 @@ func init() {
 		return false, nil
 	})
 
+	// Prevent user mode from executing priveledged instruction
 	instrHalt.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
 			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
@@ -154,6 +157,7 @@ func init() {
 		return false, nil
 	})
 
+	// Prevent user mode from executing priveledged instruction
 	instrUnreachable.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
 			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
