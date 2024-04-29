@@ -1,20 +1,3 @@
-; bootloader fetches instruction words based on how many instructions are in the program
-; similar to how we read in a literal in the prime example, will be doing the same for instruction words
-; main tasks
-; - fetch instructions
-; - save instructions
-; - when out of instructions, move iptr back to start (1024)
-; - start executing?
-
-; QUESTIONS?
-; - if we have direct contact with the emulator and it has the 16-bit int that is the total num of instructions in the program, could we just loop the total number that we have recieved?
-;       - yes.
-; - is there a done instruction? how do we know when the program is finished? null pointer?
-;       - 'move r3 r7' --> done. jumping to execute
-
-
-;Read in program length, two bytes and can only read one at a time
-
 
 ;r0 is the program length
 ;r1 for the instruction word (whole thing)
@@ -23,6 +6,24 @@
 ;r4 loop counter
 ;r5 
 ;r7 is the instruction pointer
+
+; mode is stored somewhere
+; keeping track of how many times the timer is fired
+; syscall is a big chunk
+; kernels responsibility to restore everything before you go back
+; kernel needs to have a way to recieve the trap reason
+; loading in a register or memory?
+; yank all registers and put them in memory before anything else happens
+; Need a new instruction to tell CPU where that memory address is 
+; 0 - 1023: kernel
+; 1024 - above: user
+
+
+check_mode:
+    loadLiteral 1024 r5
+    add r5 setUserMode r5
+
+debug r5
 
 start: 
     ; Read the program length
