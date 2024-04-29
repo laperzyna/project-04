@@ -87,5 +87,6 @@ loop_start:
 
 loop_end:
     ; Move the pointer back to 1024
+    setUserMode
     loadLiteral 1024 r7
 
