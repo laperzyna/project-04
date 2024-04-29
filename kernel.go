@@ -57,13 +57,14 @@ func (k *kernelCpuState) preExecuteHook(c *cpu) (bool, error) {
 	// BASE OF SECURITY - LOTS OF CHECKS
 
 	// check timer
-	// k.Timer++
-	// if k.Timer >= k.InstructsTimeSlice {
-	// 	k.Timer = 0
-	// 	k.Timer--
-	// 	fmt.Println("\nTimer fired!")
-	// 	// init trap handler here?
-	// }
+	k.Timer++
+	if k.Timer >= k.InstructsTimeSlice {
+		k.Timer = 0
+		fmt.Println("\nTimer fired!")
+		k.TimerFired++
+		c.registers[7] = k.TrapHandlerAddr
+		return true, nil
+	}
 
 	// example mode check and rejecting execution
 	// if !k.Mode && c.CurrentInstruction.IsPriviledge() {
@@ -100,6 +101,27 @@ func init() {
 
 	// TODO: Add hooks to other existing instructions to implement kernel
 	// support.
+	// Instruction hook for load to prevent loading from kernel memory
+	instrLoad.addHook(func(c *cpu, args [3]uint8) (bool, error) {
+		a0 := resolveArg(c, args[0])
+		addr := int(a0)
+		if addr < 1024 || addr > 2048 {
+			return true, nil
+		}
+
+		return false, nil
+	})
+
+	// Instruction hook for store to prevent storing into kernel memory
+	instrStore.addHook(func(c *cpu, args [3]uint8) (bool, error) {
+		a1 := resolveArg(c, args[1])
+		addr := int(a1)
+		if addr < 1024 || addr > 2048 {
+			return true, nil
+		}
+
+		return false, nil
+	})
 
 	var (
 		// syscall <code>
