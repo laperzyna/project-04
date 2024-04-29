@@ -86,6 +86,7 @@ loop_start:
     ; After storing all instructions, the instruction pointer (r7) is reset to 1024 to begin execution of the loaded program.
 
 loop_end:
-    ; Move the pointer back to 1024
+    ; Set user mode and move the pointer back to 1024
+    setUserMode
     loadLiteral 1024 r7
 

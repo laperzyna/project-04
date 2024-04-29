@@ -57,13 +57,17 @@ func (k *kernelCpuState) preExecuteHook(c *cpu) (bool, error) {
 	// BASE OF SECURITY - LOTS OF CHECKS
 
 	// check timer
-	// k.Timer++
-	// if k.Timer >= k.InstructsTimeSlice {
-	// 	k.Timer = 0
-	// 	k.Timer--
-	// 	fmt.Println("\nTimer fired!")
-	// 	// init trap handler here?
-	// }
+	if !k.Mode {
+		k.Timer++
+		if k.Timer >= k.InstructsTimeSlice {
+			k.Timer = 0
+			fmt.Println("\nTimer fired!")
+			k.TimerFired++
+			c.registers[7] = k.TrapHandlerAddr
+			k.Mode = true
+			return true, nil
+		}
+	}
 
 	// example mode check and rejecting execution
 	// if !k.Mode && c.CurrentInstruction.IsPriviledge() {
@@ -100,6 +104,31 @@ func init() {
 
 	// TODO: Add hooks to other existing instructions to implement kernel
 	// support.
+	// Instruction hook for load to prevent loading from kernel memory
+	instrLoad.addHook(func(c *cpu, args [3]uint8) (bool, error) {
+		if !c.kernel.Mode {
+			a0 := resolveArg(c, args[0])
+			addr := int(a0)
+			if addr < 1024 || addr > 2048 {
+				return true, nil
+			}
+		}
+
+		return false, nil
+	})
+
+	// Instruction hook for store to prevent storing into kernel memory
+	instrStore.addHook(func(c *cpu, args [3]uint8) (bool, error) {
+		if !c.kernel.Mode {
+			a1 := resolveArg(c, args[1])
+			addr := int(a1)
+			if addr < 1024 || addr > 2048 {
+				return true, nil
+			}
+		}
+
+		return false, nil
+	})
 
 	var (
 		// syscall <code>
@@ -117,7 +146,7 @@ func init() {
 		instrSyscall = &instr{
 			name: "syscall",
 			cb: func(c *cpu, args [3]byte) error {
-				fmt.Println("entered syscall\n", int(args[0]&0x7F))
+				fmt.Println("\nentered syscall: ", int(args[0]&0x7F))
 
 				// switch case for syscall number provided in args[0]
 				switch int(args[0] & 0x7F) {
@@ -139,7 +168,7 @@ func init() {
 					return nil
 
 				case 2: // Exit
-					fmt.Println("Program has exited")
+					fmt.Printf("\nProgram has exited\nTimer fired %d times\n", c.kernel.TimerFired)
 					c.halted = true
 					return nil
 
@@ -147,6 +176,16 @@ func init() {
 					return fmt.Errorf("unknown syscall number: %d", args[0])
 				}
 
+			},
+			validate: nil,
+		}
+
+		// Sets the kernel to user mode
+		instrSetUserMode = &instr{
+			name: "setUserMode",
+			cb: func(c *cpu, args [3]uint8) error {
+				c.kernel.Mode = false
+				return nil
 			},
 			validate: nil,
 		}
@@ -176,5 +215,6 @@ func init() {
 	// Add kernel instructions to the instruction set.
 	// TODO: add any other instructions
 	instructionSet.add(instrSyscall)
+	instructionSet.add((instrSetUserMode))
 	//instructionSet.add(instrTrapState)
 }
