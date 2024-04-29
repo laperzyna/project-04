@@ -106,10 +106,12 @@ func init() {
 	// support.
 	// Instruction hook for load to prevent loading from kernel memory
 	instrLoad.addHook(func(c *cpu, args [3]uint8) (bool, error) {
-		a0 := resolveArg(c, args[0])
-		addr := int(a0)
-		if addr < 1024 || addr > 2048 {
-			return true, nil
+		if !c.kernel.Mode {
+			a0 := resolveArg(c, args[0])
+			addr := int(a0)
+			if addr < 1024 || addr > 2048 {
+				return true, nil
+			}
 		}
 
 		return false, nil
@@ -117,10 +119,12 @@ func init() {
 
 	// Instruction hook for store to prevent storing into kernel memory
 	instrStore.addHook(func(c *cpu, args [3]uint8) (bool, error) {
-		a1 := resolveArg(c, args[1])
-		addr := int(a1)
-		if addr < 1024 || addr > 2048 {
-			return true, nil
+		if !c.kernel.Mode {
+			a1 := resolveArg(c, args[1])
+			addr := int(a1)
+			if addr < 1024 || addr > 2048 {
+				return true, nil
+			}
 		}
 
 		return false, nil
@@ -176,6 +180,7 @@ func init() {
 			validate: nil,
 		}
 
+		// Sets the kernel to user mode
 		instrSetUserMode = &instr{
 			name: "setUserMode",
 			cb: func(c *cpu, args [3]uint8) error {
