@@ -130,6 +130,42 @@ func init() {
 		return false, nil
 	})
 
+	// Prevent user mode from executing priveledged instruction
+	instrRead.addHook(func(c *cpu, args [3]uint8) (bool, error) {
+		if !c.kernel.Mode {
+			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
+		}
+
+		return false, nil
+	})
+
+	// Prevent user mode from executing priveledged instruction
+	instrWrite.addHook(func(c *cpu, args [3]uint8) (bool, error) {
+		if !c.kernel.Mode {
+			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
+		}
+
+		return false, nil
+	})
+
+	// Prevent user mode from executing priveledged instruction
+	instrHalt.addHook(func(c *cpu, args [3]uint8) (bool, error) {
+		if !c.kernel.Mode {
+			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
+		}
+
+		return false, nil
+	})
+
+	// Prevent user mode from executing priveledged instruction
+	instrUnreachable.addHook(func(c *cpu, args [3]uint8) (bool, error) {
+		if !c.kernel.Mode {
+			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
+		}
+
+		return false, nil
+	})
+
 	var (
 		// syscall <code>
 		//
@@ -190,6 +226,16 @@ func init() {
 			validate: nil,
 		}
 
+		instrSetTrapAddress = &instr{
+			name: "setTrapAddr",
+			cb: func(c *cpu, args [3]uint8) error {
+				a0 := resolveArg(c, args[0])
+				c.kernel.TrapHandlerAddr = a0
+				return nil
+			},
+			validate: nil,
+		}
+
 		// TODO: Make an instruction to get and set the trap handler state
 		// instrTrapState = &instr{
 		// 	name: "trap_state",
@@ -216,5 +262,6 @@ func init() {
 	// TODO: add any other instructions
 	instructionSet.add(instrSyscall)
 	instructionSet.add((instrSetUserMode))
+	instructionSet.add((instrSetTrapAddress))
 	//instructionSet.add(instrTrapState)
 }
