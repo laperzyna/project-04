@@ -7,8 +7,7 @@
 ;r5 
 ;r7 is the instruction pointer
 
-; mode is stored somewhere
-; keeping track of how many times the timer is fired
+
 ; syscall is a big chunk
 ; kernels responsibility to restore everything before you go back
 ; kernel needs to have a way to recieve the trap reason
@@ -18,26 +17,28 @@
 ; 0 - 1023: kernel
 ; 1024 - above: user
 
-
-check_mode:
-    loadLiteral 1024 r5
-    add r5 setUserMode r5
-
-debug r5
+store:
+    store r0 4
+    store r1 8
+    store r2 16
+    store r3 20
+    store r4 24
+    store r5 28
+    store r6 32
+    ; store r7 36
 
 start: 
     ; Read the program length
-    read r0        ; Read the first byte into r0
+    syscall 0 
+    move r6 r0     ; Read the first byte into r0
     shl r0 8 r0    ; Shift r0 left by 8 bits
     read r1        ; Read the second byte into r1
     or r0 r1 r0    ; Combine r0 and r1 using OR operation, store in r2
 
-; debug r0
 
 ; Initialize loop counter and memory address
 loadLiteral 1024 r3     ; r3 is the memory address where the program starts
 loadLiteral 0 r4        ; r4 is our loop counter
-; debug r0
 
 loop_start:
     ; Read and assemble ans instruction word
@@ -47,26 +48,30 @@ loop_start:
     ; clear r1 for new word
     loadLiteral 0 r1
     ; read in the 1st byte
-    read r2
+    syscall 0
+    move r6 r2
     ; shift 3 places because we read in 1 byte
     shl r2 24 r2
     ; combine
     or r2 r1 r1
 
-    read r2
+    syscall 0
+    move r6 r2
     ; shift 2 places because we read in 1 byte
     shl r2 16 r2
     ; combine
     or r2 r1 r1
 
-    read r2
+    syscall 0
+    move r6 r2
     ; shift 1 place because we read in 1 byte
     shl r2 8 r2
     ; combine
     or r2 r1 r1
 
     ; read the 4th byte
-    read r2
+    syscall 0
+    move r6 r2
     or r2 r1 r1
 
     ; we have the word (a line of code), so store it in memory
@@ -88,6 +93,14 @@ loop_start:
 
 loop_end:
     ; Set user mode and move the pointer back to 1024
-    setUserMode
+    load 4 r0
+    load 8 r1
+    load 16 r2
+    load 20 r3
+    load 24 r4
+    load 28 r5
+    load 32 r6
+    load 36 r7
     loadLiteral 1024 r7
+    setUserMode
 
