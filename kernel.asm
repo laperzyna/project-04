@@ -11,6 +11,8 @@
 ; It needs to know the reason in order to know how to respond
 ; it does that by doing a syscall check on the number 
 ; It needs to keep track of the timer
+; can use read and write instructions
+; syscall is used in prime because it doesn't have access
 
 
 ;r0 is the program length
