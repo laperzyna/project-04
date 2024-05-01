@@ -235,27 +235,6 @@ func init() {
 			},
 			validate: nil,
 		}
-
-		// TODO: Make an instruction to get and set the trap handler state
-		// instrTrapState = &instr{
-		// 	name: "trap_state",
-		// 	cb: func(c *cpu, args [3]byte) error {
-		// 		syscall := int(args[0] & 0x7F)
-		// 		switch syscall {
-		// 		case 3: // Get trap
-		// 			c.registers[7] = word(c.trapHandler.getState())
-		// 			return nil
-
-		// 		case 4: // Set trap
-		// 			c.trapHandler.setState(c.registers[7])
-		// 			return nil
-
-		// 		default:
-		// 			return fmt.Errorf("unknown trap handler syscall number: %d", syscall)
-		// 		}
-		// 	},
-		// 	validate: nil, // Assuming no special validation needed for trap state instructions
-		// }
 	)
 
 	// Add kernel instructions to the instruction set.
@@ -263,5 +242,4 @@ func init() {
 	instructionSet.add(instrSyscall)
 	instructionSet.add((instrSetUserMode))
 	instructionSet.add((instrSetTrapAddress))
-	//instructionSet.add(instrTrapState)
 }
