@@ -24,15 +24,14 @@
 ;r6 reading 
 ;r7 is the instruction pointer
 
+; sent trap handler address
+setTrapAddr .trap_handler_store
 
 start: 
     ; Read the program length
-    syscall 0 
-    move r6 r0     ; Read the first byte into r0
+    read r0     ; Read the first byte into r0
     shl r0 8 r0    ; Shift r0 left by 8 bits
-    ;read r1        ; Read the second byte into r1
-    syscall 0 
-    move r6 r1 
+    read r1        ; Read the second byte into r1
     or r0 r1 r0    ; Combine r0 and r1 using OR operation, store in r2
 
     ; Initialize loop counter and memory address
@@ -47,30 +46,26 @@ instruc_loadin:
     ; clear r1 for new word
     loadLiteral 0 r1
     ; read in the 1st byte
-    syscall 0
-    move r6 r2
+    read r2
     ; shift 3 places because we read in 1 byte
     shl r2 24 r2
     ; combine
     or r2 r1 r1
 
-    syscall 0
-    move r6 r2
+    read r2
     ; shift 2 places because we read in 1 byte
     shl r2 16 r2
     ; combine
     or r2 r1 r1
 
-    syscall 0
-    move r6 r2
+    read r2
     ; shift 1 place because we read in 1 byte
     shl r2 8 r2
     ; combine
     or r2 r1 r1
 
     ; read the 4th byte
-    syscall 0
-    move r6 r2
+    read r2
     or r2 r1 r1
 
     ; we have the word (a line of code), so store it in memory
@@ -108,240 +103,193 @@ trap_handler_store:
     load 6 r6  ; Assumed to contain the trap reason
     ; Check the trap reason and handle (all the checks/ hooks)
 
+read_instruct:
+    ; allow read 
+    read r6
+    ; jump to exit
+    move r4 r7
+    ; cmove r4 .trap_reset r7
+
+write_instruct:
+    ; allow read 
+    write r6
+    ; jump to exit
+    move r4 r7
+    ; cmove r4 .trap_reset r7
+
 illegal_instruc:
     ; \nIllegal instruction!
     ; \nTimer fired XXXXXXXX times\n
-    loadLiteral 10  r6 ; Newline character
-    syscall 1
-    loadLiteral 'I' r6
-    syscall 1
-    loadLiteral 'l' r6
-    syscall 1
-    loadLiteral 'l' r6
-    syscall 1
-    loadLiteral 'e' r6
-    syscall 1
-    loadLiteral 'g' r6
-    syscall 1
-    loadLiteral 'a' r6
-    syscall 1
-    loadLiteral 'l' r6
-    syscall 1
-    loadLiteral 32  r6 ; Space character
-    syscall 1
-    loadLiteral 'i' r6
-    syscall 1
-    loadLiteral 'n' r6
-    syscall 1
-    loadLiteral 's' r6
-    syscall 1
-    loadLiteral 't' r6
-    syscall 1
-    loadLiteral 'r' r6
-    syscall 1
-    loadLiteral 'u' r6
-    syscall 1
-    loadLiteral 'c' r6
-    syscall 1
-    loadLiteral 't' r6
-    syscall 1
-    loadLiteral 'i' r6
-    syscall 1
-    loadLiteral 'o' r6
-    syscall 1
-    loadLiteral 'n' r6
-    syscall 1
-    loadLiteral '!' r6
-    syscall 1
+    write 10    ; new line
+    write 'I'
+    write 'l'
+    write 'l'
+    write 'e'
+    write 'g'
+    write 'a'
+    write 'l'
+    write 32    ; space
+    write 'i'
+    write 'n'
+    write 's'
+    write 't'
+    write 'r'
+    write 'u'
+    write 'c'
+    write 't'
+    write 'i'
+    write 'o'
+    write 'n'
+    write '!'
 
     ;print number of times a time was fired
-    loadLiteral .timesFired r0
+    loadLiteral .timer_fired_num r0
     move r0 r7
-
-    syscall 2 ; Exit process
 
 mem_bounds:
 ; \nOut of bounds memory access!
 ; \nTimer fired XXXXXXXX times\n
-    loadLiteral 10  r6 ; Newline character
-    syscall 1
-    loadLiteral 'O' r6
-    syscall 1
-    loadLiteral 'u' r6
-    syscall 1
-    loadLiteral 't' r6
-    syscall 1
-    loadLiteral 32  r6 ; Space character
-    syscall 1
-    loadLiteral 'o' r6
-    syscall 1
-    loadLiteral 'f' r6
-    syscall 1
-    loadLiteral 32  r6 ; Space character
-    syscall 1
-    loadLiteral 'b' r6
-    syscall 1
-    loadLiteral 'o' r6
-    syscall 1
-    loadLiteral 'u' r6
-    syscall 1
-    loadLiteral 'n' r6
-    syscall 1
-    loadLiteral 'd' r6
-    syscall 1
-    loadLiteral 's' r6
-    syscall 1
-    loadLiteral 32  r6 ; Space character
-    syscall 1
-    loadLiteral 'm' r6
-    syscall 1
-    loadLiteral 'e' r6
-    syscall 1
-    loadLiteral 'm' r6
-    syscall 1
-    loadLiteral 'o' r6
-    syscall 1
-    loadLiteral 'r' r6
-    syscall 1
-    loadLiteral 'y' r6
-    syscall 1
-    loadLiteral 32  r6 ; Space character
-    syscall 1
-    loadLiteral 'a' r6
-    syscall 1
-    loadLiteral 'c' r6
-    syscall 1
-    loadLiteral 'c' r6
-    syscall 1
-    loadLiteral 'e' r6
-    syscall 1
-    loadLiteral 's' r6
-    syscall 1
-    loadLiteral 's' r6
-    syscall 1
-    loadLiteral '!' r6
-    syscall 1
+    write 10    ; new line
+    write 'O'
+    write 'u'
+    write 't'
+    write 32    ; space
+    write 'o'
+    write 'f'
+    write 32    ; space
+    write 'b'
+    write 'o'
+    write 'u'
+    write 'n'
+    write 'd'
+    write 's'
+    write 32    ; space
+    write 'm'
+    write 'e'
+    write 'm'
+    write 'o'
+    write 'r'
+    write 'y'
+    write 32    ; space
+    write 'a'
+    write 'c'
+    write 'c'
+    write 'e'
+    write 's'
+    write 's'
+    write '!'
 
-    ;print number of times a time was fired
-    loadLiteral .timesFired r0
+    ; print number of times a time was fired
+    loadLiteral .timer_fired_num r0
     move r0 r7
-
-    syscall 2 ; Exit process
 
 halt:
     ; \nProgram has exited
     ; \nTimer fired XXXXXXXX times\n
-    loadLiteral 10  r6 ; Newline character
-    syscall 1
-    loadLiteral 'P' r6
-    syscall 1
-    loadLiteral 'r' r6
-    syscall 1
-    loadLiteral 'o' r6
-    syscall 1
-    loadLiteral 'g' r6
-    syscall 1
-    loadLiteral 'r' r6
-    syscall 1
-    loadLiteral 'a' r6
-    syscall 1
-    loadLiteral 'm' r6
-    syscall 1
-    loadLiteral 32  r6 ; Space character
-    syscall 1
-    loadLiteral 'h' r6
-    syscall 1
-    loadLiteral 'a' r6
-    syscall 1
-    loadLiteral 's' r6
-    syscall 1
-    loadLiteral 32  r6 ; Space character
-    syscall 1
-    loadLiteral 'e' r6
-    syscall 1
-    loadLiteral 'x' r6
-    syscall 1
-    loadLiteral 'i' r6
-    syscall 1
-    loadLiteral 't' r6
-    syscall 1
-    loadLiteral 'e' r6
-    syscall 1
-    loadLiteral 'd' r6
-    syscall 1
+    write 10    ; new line
+    write 'P'
+    write 'r'
+    write 'o'
+    write 'g'
+    write 'r'
+    write 'a'
+    write 'm'
+    write 32
+    write 'h'
+    write 'a'
+    write 's'
+    write 32
+    write 'e'
+    write 'x'
+    write 'i'
+    write 't'
+    write 'e'
+    write 'd'
 
     ;print number of times a time was fired
-    loadLiteral .timesFired r0
+    loadLiteral .timer_fired_num r0
     move r0 r7
-
-    syscall 2 ; Exit process
 
 timer_fired:
     ; \nTimer fired\n
-    loadLiteral 10  r6 ; Newline character
-    syscall 1
-    loadLiteral 'T' r6
-    syscall 1
-    loadLiteral 'i' r6
-    syscall 1
-    loadLiteral 'm' r6
-    syscall 1
-    loadLiteral 'e' r6
-    syscall 1
-    loadLiteral 'r' r6
-    syscall 1
-    loadLiteral 32  r6 ; Space character
-    syscall 1
-    loadLiteral 'f' r6
-    syscall 1
-    loadLiteral 'i' r6
-    syscall 1
-    loadLiteral 'r' r6
-    syscall 1
-    loadLiteral 'e' r6
-    syscall 1
-    loadLiteral 'd' r6
-    syscall 1
-    loadLiteral 10  r6 ; Newline character
-    syscall 1
+    write 10    ; new line
+    write 'T'
+    write 'i'
+    write 'm'
+    write 'e'
+    write 'r'
+    write 32
+    write 'f'
+    write 'i'
+    write 'r'
+    write 'e'
+    write 'd'
+    write 10
 
     ; jump to reset
     move r5 r7
 
 
-timesFired:
-    ; \nTimer fired XXXXXXXX times\n
-    loadLiteral 10  r6 ; Newline character
-    syscall 1
-    loadLiteral 'T' r6
-    syscall 1
-    loadLiteral 'i' r6
-    syscall 1
-    loadLiteral 'm' r6
-    syscall 1
-    loadLiteral 'e' r6
-    syscall 1
-    loadLiteral 'r' r6
-    syscall 1
-    loadLiteral 32  r6 ; Space character
-    syscall 1
-    loadLiteral 'f' r6
-    syscall 1
-    loadLiteral 'i' r6
-    syscall 1
-    loadLiteral 'r' r6
-    syscall 1
-    loadLiteral 'e' r6
-    syscall 1
-    loadLiteral 'd' r6
-    syscall 1
-    loadLiteral 10  r6 ; Newline character
-    syscall 1
+timer_fired_num:
+    ;Timer fired XXXXXXXX times\n
+    write 'T'          
+    write 'i'
+    write 'm'
+    write 'e'
+    write 'r'
+    write 32               ; space
+    write 'f'
+    write 'i'
+    write 'r'
+    write 'e'
+    write 'd'
+    write 32               ; space
 
-    ; ; grab amount timer has been fired
-    ; load 8 r0
-    ; ; shift amount by 4
-    ; loadLiteral 28 r1
+    ; load timer from memory
+    load 8 r0
+    ; Initial shift amount
+    loadLiteral 28 r1
+
+timer:
+    ; shift right to isolate the next four bits
+    shr r0 r1 r2
+    and r2 15 r2
+    lt r2 10 r3
+
+    ; prep ASCII for digits 0-9
+    add r2 48 r4
+    ; prep ASCII for 'A'-'F'
+    add r2 87 r5
+
+    ; choose correct ASCII value
+    cmove r3 r4 r2
+    ; If r2 >= 10, move r5 to r2
+    cmove r4 r5 r2
+    ; write ASCII character
+    write r2
+
+    ; Decrement the shift amount by 4
+    sub r1 4 r1
+    ; Check if r1 > 0 (continue loop if true)
+    gt r1 0 r6
+
+    ; move non-zero r1 into r7 as a new shift amount
+    cmove r6 r1 r7
+    ; restore r1 from r7 if r6 is true (continue loop)
+    cmove r6 r7 r1
+    ; repeat timerLoop if r6 is true
+    ; WHAT DO I USE HERE?!?!? RIP
+    ; cmove r6 r6 pc
+
+finishTimerCount:
+    write 32               ; space
+    write 't'
+    write 'i'
+    write 'm'
+    write 'e'
+    write 's'
+    write 10               ; new line
+    halt                   ; exit
 
 
 trap_reset:
