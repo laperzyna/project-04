@@ -37,6 +37,22 @@ var initKernelCpuState = kernelCpuState{
 	InstructsTimeSlice: 128,
 }
 
+// Saves iptr
+// Determines sets which kind of trap occured
+// 0 - syscall 0
+// 1 - syscall 1
+// 2 - syscall 2
+// 3 - timer exceeded
+// 4 - memory out of bounds
+// 5 - illegal instruction
+func kernelTrap(c *cpu, trapVal word) {
+	c.memory[6] = trapVal
+	c.memory[7] = c.registers[7]
+	c.memory[8] = word(c.kernel.TimerFired)
+	c.kernel.Mode = true
+	c.registers[7] = c.kernel.TrapHandlerAddr
+}
+
 // A hook which is executed at the beginning of each instruction step.
 //
 // This permits the kernel support subsystem to perform extra validation that is
@@ -48,31 +64,17 @@ var initKernelCpuState = kernelCpuState{
 // If `preExecuteHook` returns `true`, the instruction is "skipped": `cpu.step`
 // will immediately return without any further execution.
 func (k *kernelCpuState) preExecuteHook(c *cpu) (bool, error) {
-
-	// checks for mem out of bounds
-	// timer fired --> instruction hook instead?
-	// mode
-	// prevent priviledges
-	// validation --> both?
-	// BASE OF SECURITY - LOTS OF CHECKS
-
-	// check timer
-	if !k.Mode {
+	if !c.kernel.Mode {
 		k.Timer++
-		if k.Timer >= k.InstructsTimeSlice {
-			k.Timer = 0
-			fmt.Println("\nTimer fired!")
-			k.TimerFired++
-			c.registers[7] = k.TrapHandlerAddr
-			k.Mode = true
-			return true, nil
-		}
 	}
 
-	// example mode check and rejecting execution
-	// if !k.Mode && c.CurrentInstruction.IsPriviledge() {
-	// 	return false, fmt.Errorf("illegal instruction in user mode")
-	// }
+	if k.Timer >= k.InstructsTimeSlice {
+		k.Timer = 0
+		k.TimerFired++
+		kernelTrap(c, 3)
+		return true, nil
+	}
+
 	return false, nil
 }
 
@@ -109,7 +111,8 @@ func init() {
 		if !c.kernel.Mode {
 			a0 := resolveArg(c, args[0])
 			addr := int(a0)
-			if addr < 1024 || addr > 2048 {
+			if addr < 1024 || addr >= 2048 {
+				kernelTrap(c, 4)
 				return true, nil
 			}
 		}
@@ -122,7 +125,8 @@ func init() {
 		if !c.kernel.Mode {
 			a1 := resolveArg(c, args[1])
 			addr := int(a1)
-			if addr < 1024 || addr > 2048 {
+			if addr < 1024 || addr >= 2048 {
+				kernelTrap(c, 4)
 				return true, nil
 			}
 		}
@@ -130,37 +134,41 @@ func init() {
 		return false, nil
 	})
 
-	// Prevent user mode from executing priveledged instruction
+	// Prevent user mode from executing privledged instruction
 	instrRead.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
-			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
+			kernelTrap(c, 5)
+			return true, nil
 		}
 
 		return false, nil
 	})
 
-	// Prevent user mode from executing priveledged instruction
+	// Prevent user mode from executing privledged instruction
 	instrWrite.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
-			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
+			kernelTrap(c, 5)
+			return true, nil
 		}
 
 		return false, nil
 	})
 
-	// Prevent user mode from executing priveledged instruction
+	// Prevent user mode from executing privledged instruction
 	instrHalt.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
-			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
+			kernelTrap(c, 5)
+			return true, nil
 		}
 
 		return false, nil
 	})
 
-	// Prevent user mode from executing priveledged instruction
+	// Prevent user mode from executing privledged instruction
 	instrUnreachable.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
-			return false, fmt.Errorf("\nIllegal instruction!\nTimer fired %d times\n", c.kernel.TimerFired)
+			kernelTrap(c, 5)
+			return true, nil
 		}
 
 		return false, nil
@@ -181,39 +189,46 @@ func init() {
 		// these existing codes, as `prime.asm` assumes that they are supported.
 		instrSyscall = &instr{
 			name: "syscall",
-			cb: func(c *cpu, args [3]byte) error {
-				fmt.Println("\nentered syscall: ", int(args[0]&0x7F))
+			cb: func(c *cpu, args [3]uint8) error {
+				syscall := int(args[0] & 0x7F)
 
-				// switch case for syscall number provided in args[0]
-				switch int(args[0] & 0x7F) {
-				case 0: // Read
-					var buf [1]byte
-					_, err := c.read.Read(buf[:])
-					if err != nil {
-						return fmt.Errorf("failed to read from input device: %v", err)
-					}
-					c.registers[6] = word(buf[0])
-					return nil
-
-				case 1: // Write
-					b := byte(c.registers[6] & 0xFF)
-					_, err := c.write.Write([]byte{b})
-					if err != nil {
-						return fmt.Errorf("failed to write to output device: %v", err)
-					}
-					return nil
-
-				case 2: // Exit
-					fmt.Printf("\nProgram has exited\nTimer fired %d times\n", c.kernel.TimerFired)
-					c.halted = true
-					return nil
-
-				default:
-					return fmt.Errorf("unknown syscall number: %d", args[0])
+				if syscall > 2 || syscall < 0 {
+					return fmt.Errorf("Invalid syscall: %d\n", syscall)
 				}
 
+				kernelTrap(c, word(syscall))
+				return nil
+
+				// switch case for syscall number provided in args[0]
+				// switch int(args[0] & 0x7F) {
+				// case 0: // Read
+				// 	var buf [1]byte
+				// 	_, err := c.read.Read(buf[:])
+				// 	if err != nil {
+				// 		return fmt.Errorf("failed to read from input device: %v", err)
+				// 	}
+				// 	c.registers[6] = word(buf[0])
+				// 	return nil
+
+				// case 1: // Write
+				// 	b := byte(c.registers[6] & 0xFF)
+				// 	_, err := c.write.Write([]byte{b})
+				// 	if err != nil {
+				// 		return fmt.Errorf("failed to write to output device: %v", err)
+				// 	}
+				// 	return nil
+
+				// case 2: // Exit
+				// 	fmt.Printf("\nProgram has exited\nTimer fired %d times\n", c.kernel.TimerFired)
+				// 	c.halted = true
+				// 	return nil
+
+				// default:
+				// 	return fmt.Errorf("unknown syscall number: %d", args[0])
+				// }
+
 			},
-			validate: nil,
+			validate: genValidate(regOrLit, ignore, ignore),
 		}
 
 		// Sets the kernel to user mode
@@ -223,7 +238,7 @@ func init() {
 				c.kernel.Mode = false
 				return nil
 			},
-			validate: nil,
+			validate: genValidate(ignore, ignore, ignore),
 		}
 
 		instrSetTrapAddress = &instr{
@@ -233,12 +248,31 @@ func init() {
 				c.kernel.TrapHandlerAddr = a0
 				return nil
 			},
-			validate: nil,
+			validate: genValidate(regOrLit, ignore, ignore),
 		}
 	)
 
+	// Prevent user mode from executing privledged instruction
+	instrSetUserMode.addHook(func(c *cpu, args [3]uint8) (bool, error) {
+		if !c.kernel.Mode {
+			kernelTrap(c, 5)
+			return true, nil
+		}
+
+		return false, nil
+	})
+
+	// Prevent user mode from executing privledged instruction
+	instrSetTrapAddress.addHook(func(c *cpu, args [3]uint8) (bool, error) {
+		if !c.kernel.Mode {
+			kernelTrap(c, 5)
+			return true, nil
+		}
+
+		return false, nil
+	})
+
 	// Add kernel instructions to the instruction set.
-	// TODO: add any other instructions
 	instructionSet.add(instrSyscall)
 	instructionSet.add((instrSetUserMode))
 	instructionSet.add((instrSetTrapAddress))
