@@ -24,6 +24,9 @@
 ;r6 reading 
 ;r7 is the instruction pointer
 
+main:
+; sent trap handler address
+ setTrapAddr .trap_handler_store
 
 start: 
     ; Read the program length
@@ -33,8 +36,8 @@ start:
     or r0 r1 r0    ; Combine r0 and r1 using OR operation, store in r2
 
     ; Initialize loop counter and memory address
-    loadLiteral 1024 r3     ; r3 is the memory address where the program starts
-    loadLiteral 0 r4        ; r4 is our loop counter
+    loadLiteral 1024 r2     ; r2 is the memory address where the program starts
+    loadLiteral 0 r3        ; r3 is our loop counter
 
 instruc_loadin:
     ; Read and assemble ans instruction word
@@ -42,49 +45,48 @@ instruc_loadin:
     ; r2 will be used to read in the next byte
 
     ; clear r1 for new word
-    loadLiteral 0 r1
+    loadLiteral 0 r4
     ; read in the 1st byte
-    read r2
+    read r1
     ; shift 3 places because we read in 1 byte
-    shl r2 24 r2
+    shl r1 24 r1
     ; combine
-    or r2 r1 r1
+    or r4 r1 r4
 
-    read r2
+    read r1
     ; shift 2 places because we read in 1 byte
-    shl r2 16 r2
+    shl r1 16 r1
     ; combine
-    or r2 r1 r1
+    or r4 r1 r4
 
-    read r2
+    read r1
     ; shift 1 place because we read in 1 byte
-    shl r2 8 r2
+    shl r1 8 r1
     ; combine
-    or r2 r1 r1
+    or r4 r1 r4
 
     ; read the 4th byte
-    read r2
-    or r2 r1 r1
+    read r1
+    or r4 r1 r4
 
     ; we have the word (a line of code), so store it in memory
     ; store the instruction word in memory
-    store r1 r3
+    store r4 r2
 
     ; Increment counter and memory address
     ; Increment loop counter
-    add r4 1 r4
+    add r2 1 r2
     ; Increment memory address
     add r3 1 r3
 
     ; Compare loop counter with program length
     ; Compare counter (r4) with length (r0), result in r5
-    lt r4 r0 r5
+    lt r3 r0 r4
     ; If the loop counter is less than program length, then we have more instructions to write, jump to loop_end
-    cmove r5 .instruc_loadin r7
+    cmove r4 .instruc_loadin r7
     ; After storing all instructions, the instruction pointer (r7) is reset to 1024 to begin execution of the loaded program.
-
     ; set back to user mode
-    setUserMode
+    setUserMode 0
     ; move the pointer back to 1024
     loadLiteral 1024 r7
 
@@ -98,8 +100,8 @@ trap_handler_store:
     store r5 5
 
     ; sending memory address to CPU '6' stands for the c.memory[num] on the CPU side
-    load 6 r6 
-    loadLiteral .trap_reset r5
+    load 6 r5
+    loadLiteral .trap_reset r4
     ; Check the trap reason and handle (all the checks/ hooks)
 
     ; if 0, run read 
@@ -283,6 +285,43 @@ timer_fired_num:
     ; Initial shift amount
     loadLiteral 28 r1
 
+; timerLoop:
+; 	shr r0 r1 r2			; Get leftmost un-written four bits
+; 	and r2 15 r2			; Mask the leftmost un-written four bits
+; 	lt r2 10 r3				; Check: Are those four bits less than 10?
+
+; 	loadLiteral .numeric r5
+; 	cmove r3 r5 r7			; If r2 is less than 10, jump to numeric
+; 	add r2 87 r2			; If r2 is greater than 10, add 55 so it becomes the proper ASCII for A-F
+
+; continue:
+; 	write r2				; Write r2
+; 	sub r1 4 r1				; Reduce the shift amount by 4
+
+; 	eq r1 0 r3				; Check: Is the shift amount EQUAL to 0?
+; 	loadLiteral .finishTimerCount r5
+; 	cmove r3 r5 r7			; If so, jump to the rest of the writeTimerCount
+; 	loadLiteral .timerLoop r5
+; 	move r5 r7				; Otherwise, do the loop again
+
+; numeric:
+; 	add r2 48 r2			; Add 48 to r2 so it becomes the proper ascii for 0-9
+; 	loadLiteral .continue r5
+; 	move r5 r7				; Jump back to continue the loop
+	
+; finishTimerCount:			; finishTimer Count and lastNumeric run the above loop for the last word
+; 	and r0 15 r2
+; 	lt r2 10 r3
+
+; 	loadLiteral .lastNumeric r5
+; 	cmove r3 r5 r7
+; 	add r2 87 r2
+; 	loadLiteral .finish_timer r5
+; 	move r5 r7
+
+; lastNumeric:
+; 	add r2 48 r2
+
 timer:
     ; shift right to isolate the next four bits
     shr r0 r1 r2
@@ -314,7 +353,8 @@ timer:
     ; WHAT DO I USE HERE?!?!? RIP
     ; cmove r6 .timer r7
 
-finishTimerCount:
+finish_timer:
+    write r2
     write 32               ; space
     write 't'
     write 'i'
@@ -325,16 +365,13 @@ finishTimerCount:
     halt                   ; exit
 
 trap_reset:
-    ; sent trap handler address
-    setTrapAddr .trap_handler_store
-
     ; Reset registers
     load 0 r0
-    load 4 r1
-    load 8 r2
-    load 16 r3
-    load 20 r4
-    load 24 r5
+    load 1 r1
+    load 2 r2
+    load 3 r3
+    load 4 r4
+    load 5 r5
 
     ; set back to user mode
-    setUserMode
+    setUserMode 0 7
