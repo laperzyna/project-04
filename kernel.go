@@ -213,7 +213,7 @@ func init() {
 				}
 
 			},
-			validate: nil,
+			validate: genValidate(regOrLit, ignore, ignore),
 		}
 
 		// Sets the kernel to user mode

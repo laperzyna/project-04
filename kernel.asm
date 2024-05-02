@@ -24,8 +24,6 @@
 ;r6 reading 
 ;r7 is the instruction pointer
 
-; sent trap handler address
-setTrapAddr .trap_handler_store
 
 start: 
     ; Read the program length
@@ -93,29 +91,65 @@ instruc_loadin:
 
 trap_handler_store:
     store r0 0
-    store r1 4
-    store r2 8
-    store r3 16
-    store r4 20
-    store r5 24
+    store r1 1
+    store r2 2
+    store r3 3
+    store r4 4
+    store r5 5
 
-    ; Determine the reason for the trap (stored in a specific memory location, here assumed r6)
-    load 6 r6  ; Assumed to contain the trap reason
+    ; sending memory address to CPU '6' stands for the c.memory[num] on the CPU side
+    load 6 r6 
+    loadLiteral .trap_reset r5
     ; Check the trap reason and handle (all the checks/ hooks)
+
+    ; if 0, run read 
+    eq r5 0 r0
+    loadLiteral .read_instruct r3
+    cmove r0 r3 r7
+
+    ; if 1, run write
+    eq r5 1 r0
+    loadLiteral .write_instruct r3
+    cmove r0 r3 r7
+
+    ; if 2, then halt
+    eq r5 2 r0
+    loadLiteral .halt r3
+    cmove r0 r3 r7
+
+    ; if 3, timer
+    eq r5 3 r0
+    loadLiteral .timer_fired r3
+    cmove r0 r3 r7
+    ; cmove r0 .timer_fired r7
+
+    ; if 4, throw memory out of bounds
+    eq r5 4 r0 
+    cmove r0 .mem_bounds r7
+
+    ; if 5, throw illegal instruction
+    eq r5 5 r0
+    cmove r0 .illegal_instruc r7
+
+    eq r5 8 r0
+    loadLiteral .timer_fired_num r3
+    cmove r0 r3 r7
+
+    ; unreachable syscall
+    move r4 r7
+    
 
 read_instruct:
     ; allow read 
     read r6
     ; jump to exit
     move r4 r7
-    ; cmove r4 .trap_reset r7
 
 write_instruct:
     ; allow read 
     write r6
     ; jump to exit
     move r4 r7
-    ; cmove r4 .trap_reset r7
 
 illegal_instruc:
     ; \nIllegal instruction!
@@ -229,7 +263,6 @@ timer_fired:
     ; jump to reset
     move r5 r7
 
-
 timer_fired_num:
     ;Timer fired XXXXXXXX times\n
     write 'T'          
@@ -279,7 +312,7 @@ timer:
     cmove r6 r7 r1
     ; repeat timerLoop if r6 is true
     ; WHAT DO I USE HERE?!?!? RIP
-    ; cmove r6 r6 pc
+    ; cmove r6 .timer r7
 
 finishTimerCount:
     write 32               ; space
@@ -291,8 +324,10 @@ finishTimerCount:
     write 10               ; new line
     halt                   ; exit
 
-
 trap_reset:
+    ; sent trap handler address
+    setTrapAddr .trap_handler_store
+
     ; Reset registers
     load 0 r0
     load 4 r1
@@ -303,5 +338,3 @@ trap_reset:
 
     ; set back to user mode
     setUserMode
-
-
