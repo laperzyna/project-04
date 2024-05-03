@@ -64,15 +64,16 @@ func kernelTrap(c *cpu, trapVal word) {
 // If `preExecuteHook` returns `true`, the instruction is "skipped": `cpu.step`
 // will immediately return without any further execution.
 func (k *kernelCpuState) preExecuteHook(c *cpu) (bool, error) {
-	if !c.kernel.Mode {
-		k.Timer++
+
+	if k.Timer > k.InstructsTimeSlice {
+		kernelTrap(c, 3)
+		k.TimerFired++
+		k.Timer = 0
+		return true, nil
 	}
 
-	if k.Timer >= k.InstructsTimeSlice {
-		k.Timer = 0
-		k.TimerFired++
-		kernelTrap(c, 3)
-		return true, nil
+	if !c.kernel.Mode {
+		k.Timer++
 	}
 
 	return false, nil
