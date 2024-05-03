@@ -277,7 +277,6 @@ timer_fired_num:
 	write 'r'
 	write 'e'
 	write 'd'
-    write '!'
 	write 32
 
 	load 8 r0
