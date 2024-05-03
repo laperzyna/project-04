@@ -24,11 +24,9 @@
 ;r6 reading 
 ;r7 is the instruction pointer
 
-main:
-; sent trap handler address
- setTrapAddr .trap_handler_store
-
 start: 
+    ; sent trap handler address
+    setTrapAddr .trap_handler_store
     ; Read the program length
     read r0     ; Read the first byte into r0
     shl r0 8 r0    ; Shift r0 left by 8 bits
@@ -247,7 +245,7 @@ halt:
     move r0 r7
 
 timer_fired:
-    ; \nTimer fired\n
+    ; \nTimer fired!\n
     write 10    ; new line
     write 'T'
     write 'i'
@@ -260,6 +258,7 @@ timer_fired:
     write 'r'
     write 'e'
     write 'd'
+    write '!'
     write 10
 
     ; jump to reset
@@ -278,6 +277,7 @@ timer_fired_num:
 	write 'r'
 	write 'e'
 	write 'd'
+    write '!'
 	write 32
 
 	load 8 r0

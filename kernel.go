@@ -65,15 +65,15 @@ func kernelTrap(c *cpu, trapVal word) {
 // will immediately return without any further execution.
 func (k *kernelCpuState) preExecuteHook(c *cpu) (bool, error) {
 
+	if !c.kernel.Mode {
+		k.Timer++
+	}
+
 	if k.Timer > k.InstructsTimeSlice {
 		kernelTrap(c, 3)
 		k.TimerFired++
 		k.Timer = 0
 		return true, nil
-	}
-
-	if !c.kernel.Mode {
-		k.Timer++
 	}
 
 	return false, nil
