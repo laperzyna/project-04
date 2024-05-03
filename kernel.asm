@@ -21,14 +21,13 @@
 ;r3 is the memory address
 ;r4 loop counter
 ;r5 
-;r6 reading 
+;r6  
 ;r7 is the instruction pointer
 
-main:
-; sent trap handler address
- setTrapAddr .trap_handler_store
 
 start: 
+    ;send trap handler address
+    setTrapAddr .trap_store
     ; Read the program length
     read r0     ; Read the first byte into r0
     shl r0 8 r0    ; Shift r0 left by 8 bits
@@ -39,7 +38,7 @@ start:
     loadLiteral 1024 r2     ; r2 is the memory address where the program starts
     loadLiteral 0 r3        ; r3 is our loop counter
 
-instruc_loadin:
+loop_start:
     ; Read and assemble ans instruction word
     ; Remember to use r1 to store the full word
     ; r2 will be used to read in the next byte
@@ -83,15 +82,14 @@ instruc_loadin:
     ; Compare counter (r4) with length (r0), result in r5
     lt r3 r0 r4
     ; If the loop counter is less than program length, then we have more instructions to write, jump to loop_end
-    cmove r4 .instruc_loadin r7
+    cmove r4 .loop_start r7
     ; After storing all instructions, the instruction pointer (r7) is reset to 1024 to begin execution of the loaded program.
-    ; ; set back to user mode
-    ; setUserMode
+
     ; move the pointer back to 1024
     loadLiteral 1024 r7
 
 
-trap_handler_store:
+trap_store:
     store r0 0
     store r1 1
     store r2 2
@@ -288,29 +286,29 @@ timer_fired_num:
 
 timerLoop:
   shr r0 r1 r2            ; Get leftmost un-written four bits
-  and r2 15 r2            ; Mask the leftmost un-written four bits
-  lt r2 10 r3             ; Check: Are those four bits less than 10?
+  and r2 15 r2
+  lt r2 10 r3
 
   loadLiteral .numeric r5
-  cmove r3 r5 r7          ; If r2 is less than 10, jump to numeric
-  add r2 87 r2            ; If r2 is greater than 10, add 55 so it becomes the proper ASCII for A-F
+  cmove r3 r5 r7
+  add r2 87 r2
 
 continue:
-  write r2                ; Write r2
-  sub r1 4 r1             ; Reduce the shift amount by 4
+  write r2
+  sub r1 4 r1
 
-  eq r1 0 r3              ; Check: Is the shift amount EQUAL to 0?
+  eq r1 0 r3 
   loadLiteral .finishTimerCount r5
-  cmove r3 r5 r7          ; If so, jump to the rest of the writeTimerCount
+  cmove r3 r5 r7
   loadLiteral .timerLoop r5
-  move r5 r7              ; Otherwise, do the loop again
+  move r5 r7
 
 numeric:
-  add r2 48 r2            ; Add 48 to r2 so it becomes the proper ascii for 0-9
+  add r2 48 r2
   loadLiteral .continue r5
-  move r5 r7              ; Jump back to continue the loop
+  move r5 r7
     
-finishTimerCount:         ; finishTimer Count and lastNumeric run the above loop for the last word
+finishTimerCount:
   and r0 15 r2
   lt r2 10 r3
 
