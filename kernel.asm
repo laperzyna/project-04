@@ -24,8 +24,9 @@
 ;r6 reading 
 ;r7 is the instruction pointer
 
+main:
 ; sent trap handler address
-setTrapAddr .trap_handler_store
+ setTrapAddr .trap_handler_store
 
 start: 
     ; Read the program length
@@ -35,8 +36,8 @@ start:
     or r0 r1 r0    ; Combine r0 and r1 using OR operation, store in r2
 
     ; Initialize loop counter and memory address
-    loadLiteral 1024 r3     ; r3 is the memory address where the program starts
-    loadLiteral 0 r4        ; r4 is our loop counter
+    loadLiteral 1024 r2     ; r2 is the memory address where the program starts
+    loadLiteral 0 r3        ; r3 is our loop counter
 
 instruc_loadin:
     ; Read and assemble ans instruction word
@@ -44,78 +45,113 @@ instruc_loadin:
     ; r2 will be used to read in the next byte
 
     ; clear r1 for new word
-    loadLiteral 0 r1
+    loadLiteral 0 r4
     ; read in the 1st byte
-    read r2
+    read r1
     ; shift 3 places because we read in 1 byte
-    shl r2 24 r2
+    shl r1 24 r1
     ; combine
-    or r2 r1 r1
+    or r4 r1 r4
 
-    read r2
+    read r1
     ; shift 2 places because we read in 1 byte
-    shl r2 16 r2
+    shl r1 16 r1
     ; combine
-    or r2 r1 r1
+    or r4 r1 r4
 
-    read r2
+    read r1
     ; shift 1 place because we read in 1 byte
-    shl r2 8 r2
+    shl r1 8 r1
     ; combine
-    or r2 r1 r1
+    or r4 r1 r4
 
     ; read the 4th byte
-    read r2
-    or r2 r1 r1
+    read r1
+    or r4 r1 r4
 
     ; we have the word (a line of code), so store it in memory
     ; store the instruction word in memory
-    store r1 r3
+    store r4 r2
 
     ; Increment counter and memory address
     ; Increment loop counter
-    add r4 1 r4
+    add r2 1 r2
     ; Increment memory address
     add r3 1 r3
 
     ; Compare loop counter with program length
     ; Compare counter (r4) with length (r0), result in r5
-    lt r4 r0 r5
+    lt r3 r0 r4
     ; If the loop counter is less than program length, then we have more instructions to write, jump to loop_end
-    cmove r5 .instruc_loadin r7
+    cmove r4 .instruc_loadin r7
     ; After storing all instructions, the instruction pointer (r7) is reset to 1024 to begin execution of the loaded program.
-
-    ; set back to user mode
-    setUserMode
+    ; ; set back to user mode
+    ; setUserMode
     ; move the pointer back to 1024
     loadLiteral 1024 r7
 
 
 trap_handler_store:
     store r0 0
-    store r1 4
-    store r2 8
-    store r3 16
-    store r4 20
-    store r5 24
+    store r1 1
+    store r2 2
+    store r3 3
+    store r4 4
+    store r5 5
 
-    ; Determine the reason for the trap (stored in a specific memory location, here assumed r6)
-    load 6 r6  ; Assumed to contain the trap reason
+    ; sending memory address to CPU '6' stands for the c.memory[num] on the CPU side
+    load 6 r5
+    loadLiteral .trap_reset r4
     ; Check the trap reason and handle (all the checks/ hooks)
+
+    ; if 0, run read 
+    eq r5 0 r0
+    loadLiteral .read_instruct r3
+    cmove r0 r3 r7
+
+    ; if 1, run write
+    eq r5 1 r0
+    loadLiteral .write_instruct r3
+    cmove r0 r3 r7
+
+    ; if 2, then halt
+    eq r5 2 r0
+    loadLiteral .halt r3
+    cmove r0 r3 r7
+
+    ; if 3, timer
+    eq r5 3 r0
+    loadLiteral .timer_fired r3
+    cmove r0 r3 r7
+    ; cmove r0 .timer_fired r7
+
+    ; if 4, throw memory out of bounds
+    eq r5 4 r0 
+    cmove r0 .mem_bounds r7
+
+    ; if 5, throw illegal instruction
+    eq r5 5 r0
+    cmove r0 .illegal_instruc r7
+
+    eq r5 8 r0
+    loadLiteral .timer_fired_num r3
+    cmove r0 r3 r7
+
+    ; unreachable syscall
+    move r4 r7
+    
 
 read_instruct:
     ; allow read 
     read r6
     ; jump to exit
     move r4 r7
-    ; cmove r4 .trap_reset r7
 
 write_instruct:
     ; allow read 
     write r6
     ; jump to exit
     move r4 r7
-    ; cmove r4 .trap_reset r7
 
 illegal_instruc:
     ; \nIllegal instruction!
@@ -227,11 +263,11 @@ timer_fired:
     write 10
 
     ; jump to reset
-    move r5 r7
-
+    move r4 r7
 
 timer_fired_num:
     ;Timer fired XXXXXXXX times\n
+    write 10    ; new line
     write 'T'          
     write 'i'
     write 'm'
@@ -250,38 +286,46 @@ timer_fired_num:
     ; Initial shift amount
     loadLiteral 28 r1
 
-timer:
-    ; shift right to isolate the next four bits
-    shr r0 r1 r2
-    and r2 15 r2
-    lt r2 10 r3
+timerLoop:
+  shr r0 r1 r2            ; Get leftmost un-written four bits
+  and r2 15 r2            ; Mask the leftmost un-written four bits
+  lt r2 10 r3             ; Check: Are those four bits less than 10?
 
-    ; prep ASCII for digits 0-9
-    add r2 48 r4
-    ; prep ASCII for 'A'-'F'
-    add r2 87 r5
+  loadLiteral .numeric r5
+  cmove r3 r5 r7          ; If r2 is less than 10, jump to numeric
+  add r2 87 r2            ; If r2 is greater than 10, add 55 so it becomes the proper ASCII for A-F
 
-    ; choose correct ASCII value
-    cmove r3 r4 r2
-    ; If r2 >= 10, move r5 to r2
-    cmove r4 r5 r2
-    ; write ASCII character
+continue:
+  write r2                ; Write r2
+  sub r1 4 r1             ; Reduce the shift amount by 4
+
+  eq r1 0 r3              ; Check: Is the shift amount EQUAL to 0?
+  loadLiteral .finishTimerCount r5
+  cmove r3 r5 r7          ; If so, jump to the rest of the writeTimerCount
+  loadLiteral .timerLoop r5
+  move r5 r7              ; Otherwise, do the loop again
+
+numeric:
+  add r2 48 r2            ; Add 48 to r2 so it becomes the proper ascii for 0-9
+  loadLiteral .continue r5
+  move r5 r7              ; Jump back to continue the loop
+    
+finishTimerCount:         ; finishTimer Count and lastNumeric run the above loop for the last word
+  and r0 15 r2
+  lt r2 10 r3
+
+  loadLiteral .lastNumeric r5
+  cmove r3 r5 r7
+  add r2 87 r2
+  loadLiteral .finish_timer r5
+  move r5 r7
+
+lastNumeric:
+  add r2 48 r2
+
+
+finish_timer:
     write r2
-
-    ; Decrement the shift amount by 4
-    sub r1 4 r1
-    ; Check if r1 > 0 (continue loop if true)
-    gt r1 0 r6
-
-    ; move non-zero r1 into r7 as a new shift amount
-    cmove r6 r1 r7
-    ; restore r1 from r7 if r6 is true (continue loop)
-    cmove r6 r7 r1
-    ; repeat timerLoop if r6 is true
-    ; WHAT DO I USE HERE?!?!? RIP
-    ; cmove r6 r6 pc
-
-finishTimerCount:
     write 32               ; space
     write 't'
     write 'i'
@@ -291,18 +335,17 @@ finishTimerCount:
     write 10               ; new line
     halt                   ; exit
 
-
 trap_reset:
     ; Reset registers
     load 0 r0
-    load 4 r1
-    load 8 r2
-    load 16 r3
-    load 20 r4
-    load 24 r5
+    load 1 r1
+    load 2 r2
+    load 3 r3
+    load 4 r4
+    load 5 r5
 
-    ; set back to user mode
-    ; setUserMode
     setIptr 7
+    ; set back to user mode
+    setUserMode
 
 
