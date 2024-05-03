@@ -254,11 +254,12 @@ func init() {
 		instrSetIptr = &instr{
 			name: "setIptr",
 			cb: func(c *cpu, args [3]uint8) error {
-				c.registers[7] = c.memory[7]
+				addr := int(args[0] & 0x7F)
+				c.registers[7] = c.memory[addr]
 				c.kernel.Mode = false
 				return nil
 			},
-			validate: genValidate(ignore, ignore, ignore),
+			validate: genValidate(regOrLit, ignore, ignore),
 		}
 	)
 

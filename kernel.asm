@@ -303,6 +303,6 @@ trap_reset:
 
     ; set back to user mode
     ; setUserMode
-    setIptr
+    setIptr 7
 
 
