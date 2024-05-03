@@ -323,36 +323,6 @@ finishTimerCount:         ; finishTimer Count and lastNumeric run the above loop
 lastNumeric:
   add r2 48 r2
 
-; timer:
-;     ; shift right to isolate the next four bits
-;     shr r0 r1 r2
-;     and r2 15 r2
-;     lt r2 10 r3
-
-;     ; prep ASCII for digits 0-9
-;     add r2 48 r4
-;     ; prep ASCII for 'A'-'F'
-;     add r2 87 r5
-
-;     ; choose correct ASCII value
-;     cmove r3 r4 r2
-;     ; If r2 >= 10, move r5 to r2
-;     cmove r4 r5 r2
-;     ; write ASCII character
-;     write r2
-
-;     ; Decrement the shift amount by 4
-;     sub r1 4 r1
-;     ; Check if r1 > 0 (continue loop if true)
-;     gt r1 0 r6
-
-;     ; move non-zero r1 into r7 as a new shift amount
-;     cmove r6 r1 r7
-;     ; restore r1 from r7 if r6 is true (continue loop)
-;     cmove r6 r7 r1
-;     ; repeat timerLoop if r6 is true
-;     ; WHAT DO I USE HERE?!?!? RIP
-;     ; cmove r6 .timer r7
 
 finish_timer:
     write r2
