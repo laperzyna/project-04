@@ -250,6 +250,17 @@ func init() {
 			},
 			validate: genValidate(regOrLit, ignore, ignore),
 		}
+
+		instrSetIptr = &instr{
+			name: "setIptr",
+			cb: func(c *cpu, args [3]uint8) error {
+				addr := int(args[0] & 0x7F)
+				c.registers[7] = c.memory[addr]
+				c.kernel.Mode = false
+				return nil
+			},
+			validate: genValidate(regOrLit, ignore, ignore),
+		}
 	)
 
 	// Prevent user mode from executing privledged instruction
@@ -272,8 +283,19 @@ func init() {
 		return false, nil
 	})
 
+	// Prevent user mode from executing privledged instruction
+	instrSetIptr.addHook(func(c *cpu, args [3]uint8) (bool, error) {
+		if !c.kernel.Mode {
+			kernelTrap(c, 5)
+			return true, nil
+		}
+
+		return false, nil
+	})
+
 	// Add kernel instructions to the instruction set.
 	instructionSet.add(instrSyscall)
 	instructionSet.add((instrSetUserMode))
 	instructionSet.add((instrSetTrapAddress))
+	instructionSet.add((instrSetIptr))
 }

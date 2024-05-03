@@ -302,6 +302,7 @@ trap_reset:
     load 24 r5
 
     ; set back to user mode
-    setUserMode
+    ; setUserMode
+    setIptr 7
 
 
