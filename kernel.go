@@ -45,7 +45,7 @@ var initKernelCpuState = kernelCpuState{
 // 3 - timer exceeded
 // 4 - memory out of bounds
 // 5 - illegal instruction
-func kernelTrap(c *cpu, trapVal word) {
+func trapHandler(c *cpu, trapVal word) {
 	c.memory[6] = trapVal
 	c.memory[7] = c.registers[7]
 	c.memory[8] = word(c.kernel.TimerFired)
@@ -65,15 +65,17 @@ func kernelTrap(c *cpu, trapVal word) {
 // will immediately return without any further execution.
 func (k *kernelCpuState) preExecuteHook(c *cpu) (bool, error) {
 
+	// check if no trap then increment timer
+	if !c.kernel.Mode {
+		k.Timer++
+	}
+
+	// if the timer has gone over the allowed time fire the trap
 	if k.Timer > k.InstructsTimeSlice {
-		kernelTrap(c, 3)
+		trapHandler(c, 3)
 		k.TimerFired++
 		k.Timer = 0
 		return true, nil
-	}
-
-	if !c.kernel.Mode {
-		k.Timer++
 	}
 
 	return false, nil
@@ -87,17 +89,7 @@ func init() {
 		// This is an example of adding a hook to an instruction. You probably
 		// don't actually want to add a hook to the `add` instruction.
 		instrAdd.addHook(func(c *cpu, args [3]uint8) (bool, error) {
-			a0 := resolveArg(c, args[0])
-			a1 := resolveArg(c, args[1])
-			if a0 == a1 {
-				// Adding a number to itself? That seems like a weird thing to
-				// do. Best just to skip it...
-				return true, nil
-			}
-
 			if args[2] == 7 {
-				// This instruction is trying to write to the instruction
-				// pointer. That sounds dangerous!
 				return false, fmt.Errorf("You're not allowed to ever change the instruction pointer. No loops for you!")
 			}
 
@@ -105,15 +97,13 @@ func init() {
 		})
 	}
 
-	// TODO: Add hooks to other existing instructions to implement kernel
-	// support.
 	// Instruction hook for load to prevent loading from kernel memory
 	instrLoad.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
 			a0 := resolveArg(c, args[0])
 			addr := int(a0)
 			if addr < 1024 || addr >= 2048 {
-				kernelTrap(c, 4)
+				trapHandler(c, 4)
 				return true, nil
 			}
 		}
@@ -127,7 +117,7 @@ func init() {
 			a1 := resolveArg(c, args[1])
 			addr := int(a1)
 			if addr < 1024 || addr >= 2048 {
-				kernelTrap(c, 4)
+				trapHandler(c, 4)
 				return true, nil
 			}
 		}
@@ -138,7 +128,7 @@ func init() {
 	// Prevent user mode from executing privledged instruction
 	instrRead.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
-			kernelTrap(c, 5)
+			trapHandler(c, 5)
 			return true, nil
 		}
 
@@ -148,7 +138,7 @@ func init() {
 	// Prevent user mode from executing privledged instruction
 	instrWrite.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
-			kernelTrap(c, 5)
+			trapHandler(c, 5)
 			return true, nil
 		}
 
@@ -158,7 +148,7 @@ func init() {
 	// Prevent user mode from executing privledged instruction
 	instrHalt.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
-			kernelTrap(c, 5)
+			trapHandler(c, 5)
 			return true, nil
 		}
 
@@ -168,7 +158,7 @@ func init() {
 	// Prevent user mode from executing privledged instruction
 	instrUnreachable.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
-			kernelTrap(c, 5)
+			trapHandler(c, 5)
 			return true, nil
 		}
 
@@ -197,36 +187,8 @@ func init() {
 					return fmt.Errorf("Invalid syscall: %d\n", syscall)
 				}
 
-				kernelTrap(c, word(syscall))
+				trapHandler(c, word(syscall))
 				return nil
-
-				// switch case for syscall number provided in args[0]
-				// switch int(args[0] & 0x7F) {
-				// case 0: // Read
-				// 	var buf [1]byte
-				// 	_, err := c.read.Read(buf[:])
-				// 	if err != nil {
-				// 		return fmt.Errorf("failed to read from input device: %v", err)
-				// 	}
-				// 	c.registers[6] = word(buf[0])
-				// 	return nil
-
-				// case 1: // Write
-				// 	b := byte(c.registers[6] & 0xFF)
-				// 	_, err := c.write.Write([]byte{b})
-				// 	if err != nil {
-				// 		return fmt.Errorf("failed to write to output device: %v", err)
-				// 	}
-				// 	return nil
-
-				// case 2: // Exit
-				// 	fmt.Printf("\nProgram has exited\nTimer fired %d times\n", c.kernel.TimerFired)
-				// 	c.halted = true
-				// 	return nil
-
-				// default:
-				// 	return fmt.Errorf("unknown syscall number: %d", args[0])
-				// }
 
 			},
 			validate: genValidate(regOrLit, ignore, ignore),
@@ -242,6 +204,7 @@ func init() {
 			validate: genValidate(ignore, ignore, ignore),
 		}
 
+		// gets trap handler address for trap
 		instrSetTrapAddress = &instr{
 			name: "setTrapAddr",
 			cb: func(c *cpu, args [3]uint8) error {
@@ -252,6 +215,7 @@ func init() {
 			validate: genValidate(regOrLit, ignore, ignore),
 		}
 
+		// resets the instruction pointer
 		instrSetIptr = &instr{
 			name: "setIptr",
 			cb: func(c *cpu, args [3]uint8) error {
@@ -267,7 +231,7 @@ func init() {
 	// Prevent user mode from executing privledged instruction
 	instrSetUserMode.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
-			kernelTrap(c, 5)
+			trapHandler(c, 5)
 			return true, nil
 		}
 
@@ -277,7 +241,7 @@ func init() {
 	// Prevent user mode from executing privledged instruction
 	instrSetTrapAddress.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
-			kernelTrap(c, 5)
+			trapHandler(c, 5)
 			return true, nil
 		}
 
@@ -287,7 +251,7 @@ func init() {
 	// Prevent user mode from executing privledged instruction
 	instrSetIptr.addHook(func(c *cpu, args [3]uint8) (bool, error) {
 		if !c.kernel.Mode {
-			kernelTrap(c, 5)
+			trapHandler(c, 5)
 			return true, nil
 		}
 
