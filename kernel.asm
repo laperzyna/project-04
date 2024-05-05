@@ -15,15 +15,6 @@
 ; syscall is used in prime because it doesn't have access
 
 
-;r0 is the program length
-;r1 for the instruction word (whole thing)
-;r2 for the instruction word (the next byte we gather)
-;r3 is the memory address
-;r4 loop counter
-;r5 
-;r6 reading 
-;r7 is the instruction pointer
-
 start: 
     ; sent trap handler address
     setTrapAddr .trap_handler_store
@@ -282,12 +273,12 @@ timer_fired_num:
 	load 8 r0
 	loadLiteral 28 r1
 
-timerLoop:
+timer_loop:
 	shr r0 r1 r2
 	and r2 15 r2
 	lt r2 10 r3	
 
-	loadLiteral .numeric r5
+	loadLiteral .hex r5
 	cmove r3 r5 r7
 	add r2 87 r2
 
@@ -296,30 +287,30 @@ continue:
 	sub r1 4 r1	
 
 	eq r1 0 r3
-	loadLiteral .finishTimerCount r5
+	loadLiteral .timer_two r5
 	cmove r3 r5 r7
-	loadLiteral .timerLoop r5
+	loadLiteral .timer_loop r5
 	move r5 r7
 
-numeric:
+hex:
 	add r2 48 r2
 	loadLiteral .continue r5
 	move r5 r7	
 	
-finishTimerCount:
+timer_two:
 	and r0 15 r2
 	lt r2 10 r3
 
-	loadLiteral .lastNumeric r5
+	loadLiteral .next_hex r5
 	cmove r3 r5 r7
 	add r2 87 r2
-	loadLiteral .lastContinue r5
+	loadLiteral .timer_finish r5
 	move r5 r7
 
-lastNumeric:
+next_hex:
 	add r2 48 r2
 
-lastContinue:
+timer_finish:
 	write r2				
 	write 32
 	write 't'
