@@ -32,6 +32,8 @@ If a user land program attempts to access memory outside of this range, the trap
 attempts to use them, the kernal trap is invoked with error code 5.
 - setIptr/setTrapAddress/setUserMode: These instructions are only allowed to be executed in kernel mode. If a user land program
 attempts to use them, the kernal trap is invoked with error code 5.
+
+Lidia Perzyna & Isaac Meltsner (Intro to Security USFCA-2024)
 */
 
 package main
