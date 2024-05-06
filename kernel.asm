@@ -311,41 +311,41 @@ loop_again:
     ; write the current hex digit stored in r2
     write r2
     ; subtract 4 from the shift amount in r1 for the next hex digit
-    sub r1, 4, r1
+    sub r1 4 r1
 
     ; check if all hex digits have been processed (when shift amount reaches 0)
-    eq r1, 0, r3
+    eq r1 0 r3
     ; load address of 'timer_two' section into r5 for handling the last digit
-    loadLiteral .timer_two, r5
+    loadLiteral .timer_two r5
     ; conditional move: if all digits processed, move to process the last digit
-    cmove r3, r5, r7
+    cmove r3 r5 r7
     ; otherwise, repeat the loop
-    loadLiteral .timer_loop, r5
-    move r5, r7
+    loadLiteral .timer_loop r5
+    move r5 r7
 
 ; adjust the ASCII value to show the actual hexadecimal digit
 hex:
     ; ddd 48 to r2 to adjust ASCII value for numeric digits (0-9)
-    add r2, 48, r2
+    add r2 48 r2
     ; jump back to 'loop_again' to continue processing
-    loadLiteral .loop_again, r5
-    move r5, r7
+    loadLiteral .loop_again r5
+    move r5 r7
 
 ; conversion to hex
 timer_two:
 	; isolate the last hex digit from r0
-    and r0, 15, r2
+    and r0 15 r2
     ; check if it is a numeric digit
-    lt r2, 10, r3
+    lt r2 10 r3
 
     ; prepare to handle numeric or alphabetic hex digit
-    loadLiteral .next_hex, r5
-    cmove r3, r5, r7
+    loadLiteral .next_hex r5
+    cmove r3 r5 r7
     ; adjust for alphabetic digit (a-f)
-    add r2, 87, r2
+    add r2 87 r2
     ; prepare to finish displaying timer value
-    loadLiteral .timer_finish, r5
-    move r5, r7
+    loadLiteral .timer_finish r5
+    move r5 r7
 
 ; finish conversion
 next_hex:
