@@ -1,3 +1,39 @@
+/*
+Purpose: The goal of this project is to implement CPU support for a kernel.
+The CPU initializes the state of the kernel.
+- Mode: The Mode is true if programs are executing in kernel mode and false if they are executing in user mode
+- TrapHandlerAddr: Sets the memory address where the kernel will go after a timer fires or an illegal instruction loaded
+- Timer: Keeps track of how many instructions have executed in a cycle
+- TimerFired: Keeps track of how many times the timer has fired
+- InstructsTimeSlice: Determines how many instructions can execute per cycle
+
+Trap Handler: The CPU has a function to handle kernel traps. This function
+takes a number that specifies which type of trap occured. It stores this number in cpu memory. The function also
+stores the value of the current iptr and the number of times the timer has fired.
+- 0-2: This corresponds to a syscall. 0 is for reads, 1 is for writes, and 2 is for halts.
+- 3: Trap number 3 indicates that a timer has fired.
+- 4: Trap number 4 indicates a memory out of bounds error
+- 5: Trap number 5 indicates an illegal instruction was executed
+
+New Instructions: We added 3 new instructions to support kernel operations
+- setUserMode: This instruction changes the mode of the CPU from kernel mode to user mode
+- setIptr: This instruction puts the last saved iptr address stored in cpu memory into the iptr register.
+It then sets the cpu back to user mode.
+- setTrapAddress: This instruction sets the address where the kernel will start executing after a trap
+
+Pre execute hook: The pre execute hook executes before each instruction. If the kernel is in user mode, it increments the timer,
+and checks to see whether or not the timer has exceeded the allowed number of instructions. If it has, it calls the trap handler
+function with code 3.
+
+Instruction hooks: Certain instructions require special rules regarding their execution
+- Load/Store: In user mdoe, these instructions can only load and store from within the memory allocated to user space.
+If a user land program attempts to access memory outside of this range, the trap handler is called with error code 4.
+- Read/Write/Halt/Unreachable: These instructions are only allowed to be executed in kernel mode. If a user land program
+attempts to use them, the kernal trap is invoked with error code 5.
+- setIptr/setTrapAddress/setUserMode: These instructions are only allowed to be executed in kernel mode. If a user land program
+attempts to use them, the kernal trap is invoked with error code 5.
+*/
+
 package main
 
 import "fmt"
@@ -16,10 +52,8 @@ type kernelCpuState struct {
 	// // timer to keep track of instructions and manage time slices
 	Timer uint32
 	// how many times the timers has fired
-	// dont know if need to implement this?
 	TimerFired uint32
 	// instructions per time slice
-	// dont know if need to implement this?
 	InstructsTimeSlice uint32
 }
 
@@ -27,7 +61,7 @@ type kernelCpuState struct {
 var initKernelCpuState = kernelCpuState{
 	// start in kernel mode
 	Mode: true,
-	// TODO: address to be filled in with current address
+	// address to be filled in with current address
 	TrapHandlerAddr: word(0),
 	Timer:           0,
 	// print once finished with hex encoding the number
