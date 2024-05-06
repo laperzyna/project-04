@@ -1,51 +1,27 @@
-/*
- * The kernel.asm file mainly focuses on handling system calls
- * and traps. It interactes directly with the CPU emulator, kernel.go. 
- * The core functionalities include loading in the program or instructions,
- * trap handling, and responses to various system events.
- *
- * 1. Overview
- *
- * Our kernel implementation is designed to handle system traps by interacting with our CPU
- * emulator and being told when to execute. However, based on our CPU emulator implementation, * our kernel is fired regularly after every illegal request, syscall, or timer fired.
- * Our kernel is responsible for managing the CPU state, memory,
- * and other system-level functions.
- *
- *
- * 2. Syscall Handling
- *
- * System calls are extremely important for user programs to interact with
- * the operating system. Our kernel utilizes a comprehensive set of handlers
- * that interpret syscall and respond with appropriate actions.
- * Each syscall has a unique identifier, and the kernel uses this identifier
- * to execute the appropriate response.
- * The following is an example of a handle and response action taken by the kernel:
- *
- * eq r5 0 r0
- * loadLiteral .read_instruct r3
- * cmove r0 r3 r7
- *
- * 
- * 3. Trap Handling
- *
- * Our kernel also utilizes a trap handling routine that captures and
- * categorizes traps based on their origin and type. The kernel then decides
- * the appropriate response for each type of trap, whether it is a syscall,
- * timer fired event, or a memory fault. The handler also ensures that all system
- * state changes are safely stored and restored, allowing for consistent
- * system behavior.
- *
- * 4. Program Loading and Execution
- *
- * A simple loader is implemented that utilizes previous code from our bootloader.asm file to read executable instructions into memory.
- * Our loader establishes the length of the program, reads in the program instructions, and sets the instruction pointer to the start of the program. The labels that take care of this functionality are:
- *       start,
- *      instruc_loadin,
- *      
- *
- *
- * Lidia Perzyna & Isaac Meltsner (Intro to Security USFCA-2024)
- */
+
+; The kernel.asm file mainly focuses on handling system calls
+; and traps. It interactes directly with the CPU emulator, kernel.go. 
+; The core functionalities include loading in the program or instructions,trap handling, and responses to various system events.
+
+; 1. Overview
+
+; Our kernel implementation is designed to handle system traps by interacting with our CPU emulator and being told when to execute. However, based on our CPU emulator implementation, our kernel is fired regularly after every illegal request, syscall, or timer fired. Our kernel is responsible for managing the CPU state, memory, and other system-level functions.
+
+
+; 2. Syscall Handling
+
+; System calls are extremely important for user programs to interact with the operating system. Our kernel utilizes a comprehensive set of handlers that interpret syscall and respond with appropriate actions. Each syscall has a unique identifier, and the kernel uses this identifier to execute the appropriate response.
+
+ 
+; 3. Trap Handling
+
+; Our kernel also utilizes a trap handling routine that captures and categorizes traps based on their origin and type. The kernel then decides the appropriate response for each type of trap, whether it is a syscall, timer fired event, or a memory fault. The handler also ensures that all system state changes are safely stored and restored, allowing for consistent system behavior.
+
+; 4. Program Loading and Execution
+
+; A simple loader is implemented that utilizes previous code from our bootloader.asm file to read executable instructions into memory. Our loader establishes the length of the program, reads in the program instructions, and sets the instruction pointer to the start of the program. 
+
+; Lidia Perzyna & Isaac Meltsner (Intro to Security USFCA-2024)
 
 start: 
     ; sent trap handler address
