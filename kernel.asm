@@ -30,7 +30,7 @@ start:
     read r0     ; Read the first byte into r0
     shl r0 8 r0    ; Shift r0 left by 8 bits
     read r1        ; Read the second byte into r1
-    or r0 r1 r0    ; Combine r0 and r1 using OR operation, store in r2
+    or r0 r1 r0    ; Combine r0 and r1 using OR operation
 
     ; Initialize loop counter and memory address
     loadLiteral 1024 r2     ; r2 is the memory address where the program starts
@@ -38,10 +38,8 @@ start:
 
 instruc_loadin:
     ; Read and assemble ans instruction word
-    ; Remember to use r1 to store the full word
-    ; r2 will be used to read in the next byte
 
-    ; clear r1 for new word
+    ; clear r4 for new word
     loadLiteral 0 r4
     ; read in the 1st byte
     read r1
@@ -77,13 +75,10 @@ instruc_loadin:
     add r3 1 r3
 
     ; Compare loop counter with program length
-    ; Compare counter (r4) with length (r0), result in r5
+    ; Compare counter (r3) with length (r0), result in r4
     lt r3 r0 r4
-    ; If the loop counter is less than program length, then we have more instructions to write, jump to loop_end
+    ; If the loop counter is less than program length, then we have more instructions to write, jump to .instruc_loadin
     cmove r4 .instruc_loadin r7
-    ; After storing all instructions, the instruction pointer (r7) is reset to 1024 to begin execution of the loaded program.
-    ; ; set back to user mode
-    ; setUserMode
     ; move the pointer back to 1024
     loadLiteral 1024 r7
 
